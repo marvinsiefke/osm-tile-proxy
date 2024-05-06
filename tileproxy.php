@@ -69,9 +69,9 @@ class TileProxy {
 	private function downloadTile($z, $x, $y) {
 		set_time_limit(0);
 		$source = $this->tileserver;
-        $source = str_replace('{x}', $x, $source);
-        $source = str_replace('{y}', $y, $source);
-        $source = str_replace('{z}', $z, $source);
+		$source = str_replace('{x}', $x, $source);
+		$source = str_replace('{y}', $y, $source);
+		$source = str_replace('{z}', $z, $source);
 
 		$filePath = $this->storage . $z . '/' . $x . '/' . $y . '.png';
 		$fh = fopen($filePath, 'w');
