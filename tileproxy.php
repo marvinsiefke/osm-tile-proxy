@@ -128,7 +128,6 @@ class tileProxy {
 	}
 
 	private function downloadTile($z, $x, $y) {
-		set_time_limit(0);
 		$source = str_replace(['{x}', '{y}', '{z}'], [$x, $y, $z], $this->tileserver);
 
 		$filePath = $this->storage . $z . '/' . $x . '/' . $y . '.png';
