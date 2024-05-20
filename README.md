@@ -7,7 +7,7 @@ This script runs even on shared hosters. It does not have any specific requireme
 ## Features
 - Simple file caching
 - IP and session based rate limiting
-- Error logging (if error logs are enabled)
+- Error logging (if PHP Error logs are enabled)
 
 ## Configuration
 
