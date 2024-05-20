@@ -4,6 +4,7 @@
  * Author: Marvin Siefke
  * Author URI: https://pepper.green
  * GitHub: https://github.com/marvinsiefke/osm-tile-proxy/
+ * License: GNU GPLv3
  */
 
 ini_set('display_errors', 0);
