@@ -7,7 +7,7 @@
  * License: GNU GPLv3
  */
 
-ini_set('display_errors', 0);
+ini_set('display_errors', 1);
 ini_set('log_errors', 1);
 ini_set('max_execution_time', 30);
 ini_set('session.use_strict_mode', 0);
@@ -110,18 +110,18 @@ class rateLimiter {
 }
 
 class tileProxy {
-	private $storage;
 	private $operator;
-	private $tileserver;
 	private $trustedHosts;
+	private $storage;
+	private $tileserver;
 	private $ttl;
 	private $rateLimiter;
 
-	public function __construct($storage, $operator, $tileserver, $trustedHosts, $ttl) {
+	public function __construct($operator, $trustedHosts = [], $storage = 'cache/', $tileserver = 'https://tile.openstreetmap.org/{z}/{x}/{y}.png', $ttl = 86400 * 31) {
 		$this->storage = $storage;
+		$this->trustedHosts = $trustedHosts;
 		$this->operator = $operator;
 		$this->tileserver = $tileserver;
-		$this->trustedHosts = $trustedHosts;
 		$this->ttl = $ttl;
 
 		$this->rateLimiter = new rateLimiter();
@@ -158,7 +158,7 @@ class tileProxy {
 	private function processRequest() {
 		header('X-Content-Type-Options: nosniff');
 		header('X-XSS-Protection: 1; mode=block');
-
+		
 		$z = filter_input(INPUT_GET, 'z', FILTER_VALIDATE_INT, ['options' => ['min_range' => 0, 'max_range' => 20]]);
 		$x = filter_input(INPUT_GET, 'x', FILTER_VALIDATE_INT, ['options' => ['min_range' => 0]]);
 		$y = filter_input(INPUT_GET, 'y', FILTER_VALIDATE_INT, ['options' => ['min_range' => 0]]);
@@ -168,19 +168,21 @@ class tileProxy {
 			die('Invalid parameters');
 		}
 
-		// CORS
-		$origin = $_SERVER['HTTP_ORIGIN'] ?? '';
-		if (in_array(parse_url($origin, PHP_URL_HOST), $this->trustedHosts)) {
-			header('Access-Control-Allow-Origin: ' . $origin);
-		}
+		if (!empty($trustedHosts)) {
+			// CORS
+			$origin = $_SERVER['HTTP_ORIGIN'] ?? '';
+			if (in_array(parse_url($origin, PHP_URL_HOST), $this->trustedHosts)) {
+				header('Access-Control-Allow-Origin: ' . $origin);
+			}
 
-		// Referer
-		$referer = $_SERVER['HTTP_REFERER'] ?? '';
-		if (!empty($referer)) {
-			$refererHost = parse_url($referer, PHP_URL_HOST);
-			if (!in_array($refererHost, $this->trustedHosts)) {
-				header('HTTP/1.1 403 Forbidden');
-				die('Access denied');
+			// Referer
+			$referer = $_SERVER['HTTP_REFERER'] ?? '';
+			if (!empty($referer)) {
+				$refererHost = parse_url($referer, PHP_URL_HOST);
+				if (!in_array($refererHost, $this->trustedHosts)) {
+					header('HTTP/1.1 403 Forbidden');
+					die('Access denied');
+				}
 			}
 		}
 
@@ -217,4 +219,4 @@ class tileProxy {
 }
 
 // Usage
-new tileProxy($storage, $operator, $tileserver, $trustedHosts, $ttl);
+new tileProxy($operator, $trustedHosts);
