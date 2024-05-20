@@ -147,9 +147,7 @@ class tileProxy {
 
 		if (!curl_exec($ch)) {
 			unlink($filePath);
-			$errorMessage = curl_error($ch);
-			$errorCode = curl_errno($ch);
-			error_log('Error getting tile. cURL Error ('.$errorCode.'): '.$errorMessage, 0);
+			error_log('Error getting tile. cURL Error ('.curl_errno($ch).'): '.curl_error($ch), 0);
 			throw new Exception('Error getting tile');
 		}
 
