@@ -1,11 +1,17 @@
 <?php
+/*
+ * osm-tile-proxy
+ * Author: Marvin Siefke
+ * Author URI: https://pepper.green
+ * GitHub: https://github.com/marvinsiefke/osm-tile-proxy/
+ */
 
 require 'config.php';
 
 ini_set('max_execution_time', 30);
 ini_set('session.use_strict_mode', 0);
 
-class RateLimiter {
+class rateLimiter {
 	private $sessionLifetime;
 	private $maxRequests;
 	private $maxBanCount;
@@ -107,7 +113,7 @@ class RateLimiter {
 	}
 }
 
-class TileProxy {
+class tileProxy {
 	private $storage;
 	private $operator;
 	private $tileserver;
@@ -122,7 +128,7 @@ class TileProxy {
 		$this->trustedHosts = $trustedHosts;
 		$this->ttl = $ttl;
 
-		$this->rateLimiter = new RateLimiter();
+		$this->rateLimiter = new rateLimiter();
 		$this->processRequest();
 	}
 
@@ -213,4 +219,4 @@ class TileProxy {
 }
 
 // Usage
-new TileProxy($storage, $operator, $tileserver, $trustedHosts, $ttl);
+new tileProxy($storage, $operator, $tileserver, $trustedHosts, $ttl);
