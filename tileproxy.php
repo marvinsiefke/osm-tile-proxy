@@ -3,23 +3,75 @@
 require 'config.php';
 
 set_time_limit(30);
-error_reporting(0);
+ini_set('session.use_strict_mode', 0);
 
 class RateLimiter {
 	private $sessionLifetime;
 	private $maxRequests;
+	private $maxBanCount;
+	private $banDuration;
 
-	public function __construct($sessionLifetime = 60, $maxRequests = 1000) {
-		global $sessionLifetime, $maxRequests;
+	public function __construct($sessionLifetime = 60, $maxRequests = 1000, $maxBanCount = 5, $banDuration = 21600) {
 		$this->sessionLifetime = $sessionLifetime;
 		$this->maxRequests = $maxRequests;
+		$this->maxBanCount = $maxBanCount;
+		$this->banDuration = $banDuration;
 
-		if (!session_id()) {
-			$this->startSessionBasedOnIP();
+		$this->startSessionBasedOnIP();
+		$this->initializeSessionVariables();
+		$this->checkRateLimit();
+	}
+
+	private function getIp() {
+		$ipKeys = ['HTTP_CF_CONNECTING_IP', 'HTTP_CLIENT_IP', 'HTTP_X_FORWARDED_FOR', 'REMOTE_ADDR'];
+
+		foreach ($ipKeys as $key) {
+			if (!empty($_SERVER[$key])) {
+				$ip = $_SERVER[$key];
+				// Handle the case where HTTP_X_FORWARDED_FOR contains multiple IP addresses
+				if ($key === 'HTTP_X_FORWARDED_FOR') {
+					$ipList = explode(',', $ip);
+					$ip = trim(end($ipList)); 
+				}
+				if (filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_IPV4 | FILTER_FLAG_IPV6)) {
+					return $ip;
+				}
+			}
 		}
 
+		return false;
+	}
+
+	private function startSessionBasedOnIP() {
+		$ip = $this->getIp();
+		if (session_status() === PHP_SESSION_NONE) {
+			if ($ip !== false) {
+				$ipHash = md5($ip);
+				session_id($ipHash);
+				session_start();
+			}
+		}
+	}
+
+	private function initializeSessionVariables() {
 		if (!isset($_SESSION['tzero'])) {
 			$_SESSION['tzero'] = time();
+		}
+		if (!isset($_SESSION['hits'])) {
+			$_SESSION['hits'] = 0;
+		}
+		if (!isset($_SESSION['bans'])) {
+			$_SESSION['bans'] = 0;
+		}
+		if (!isset($_SESSION['bannedUntil'])) {
+			$_SESSION['bannedUntil'] = 0;
+		}
+	}
+
+	private function checkRateLimit() {
+		if ($_SESSION['bannedUntil'] > time()) {
+			header('HTTP/1.0 400 Bad Request');
+			die('You have been banned. Please try again later.');
 		}
 
 		$sinceIntervalStart = time() - $_SESSION['tzero'];
@@ -32,15 +84,26 @@ class RateLimiter {
 		}
 
 		if ($_SESSION['hits'] > $this->maxRequests) {
-			header('HTTP/1.1 429 Too Many Requests');
-			die('Too many requests');
+			$this->handleBan();
 		}
 	}
 
-	private function startSessionBasedOnIP() {
-		session_start();
-		$ipHash = md5($_SERVER['REMOTE_ADDR']);
-		session_id($ipHash);
+	public function handleBan() {
+		if ($_SESSION['bans'] < $this->maxBanCount) {
+			$_SESSION['bans']++;
+			if ($_SESSION['bans'] >= $this->maxBanCount) {
+				$this->executeBan();
+			}
+		}
+
+		header('HTTP/1.1 429 Too Many Requests');
+		die('Too many requests');
+	}
+
+	public function executeBan() {
+		$_SESSION['bannedUntil'] = time() + $this->banDuration;
+		header('HTTP/1.0 400 Bad Request');
+		die('You have been banned.');
 	}
 }
 
@@ -50,6 +113,7 @@ class TileProxy {
 	private $tileserver;
 	private $trustedHosts;
 	private $ttl;
+	private $rateLimiter;
 
 	public function __construct($storage, $operator, $tileserver, $trustedHosts, $ttl) {
 		$this->storage = $storage;
@@ -58,24 +122,20 @@ class TileProxy {
 		$this->trustedHosts = $trustedHosts;
 		$this->ttl = $ttl;
 
-		$this->limitRequests();
+		$this->rateLimiter = new RateLimiter();
 		$this->processRequest();
-	}
-
-	private function limitRequests() {
-		new RateLimiter();
 	}
 
 	private function downloadTile($z, $x, $y) {
 		set_time_limit(0);
-		$source = $this->tileserver;
-		$source = str_replace('{x}', $x, $source);
-		$source = str_replace('{y}', $y, $source);
-		$source = str_replace('{z}', $z, $source);
+		$source = str_replace(['{x}', '{y}', '{z}'], [$x, $y, $z], $this->tileserver);
 
 		$filePath = $this->storage . $z . '/' . $x . '/' . $y . '.png';
-		$fh = fopen($filePath, 'w');
+		if (!is_dir(dirname($filePath))) {
+			mkdir(dirname($filePath), 0750, true);
+		}
 
+		$fh = fopen($filePath, 'w');
 		$ch = curl_init();
 		curl_setopt($ch, CURLOPT_URL, $source);
 		curl_setopt($ch, CURLOPT_FILE, $fh);
@@ -83,22 +143,23 @@ class TileProxy {
 		curl_setopt($ch, CURLOPT_USERAGENT, 'Tile Proxy, Operator: ' . $this->operator);
 		curl_setopt($ch, CURLOPT_FAILONERROR, true);
 
-		if (curl_exec($ch)) {
-			curl_close($ch);
-			fclose($fh);
-		} else {
+		if (!curl_exec($ch)) {
 			curl_close($ch);
 			fclose($fh);
 			unlink($filePath);
 			throw new Exception('Error providing tile');
 		}
+
+		curl_close($ch);
+		fclose($fh);
 	}
 
 	private function processRequest() {
-		$z = filter_var($_GET['z'], FILTER_VALIDATE_INT, ['options' => ['min_range' => 0, 'max_range' => 20]]);
-		$x = filter_var($_GET['x'], FILTER_VALIDATE_INT, ['options' => ['min_range' => 0]]);
-		$y = filter_var($_GET['y'], FILTER_VALIDATE_INT, ['options' => ['min_range' => 0]]);
+		$z = filter_input(INPUT_GET, 'z', FILTER_VALIDATE_INT, ['options' => ['min_range' => 0, 'max_range' => 20]]);
+		$x = filter_input(INPUT_GET, 'x', FILTER_VALIDATE_INT, ['options' => ['min_range' => 0]]);
+		$y = filter_input(INPUT_GET, 'y', FILTER_VALIDATE_INT, ['options' => ['min_range' => 0]]);
 		if ($z === false || $x === false || $y === false) {
+			$this->rateLimiter->executeBan(); // Ban immediately if invalid parameters are detected
 			header('HTTP/1.0 400 Bad Request');
 			die('Invalid parameters');
 		}
@@ -119,7 +180,6 @@ class TileProxy {
 			}
 		}
 
-		// Check if directories exist and download tile
 		$tileDirectory = $this->storage . $z . '/' . $x;
 		if (!is_dir($tileDirectory)) {
 			mkdir($tileDirectory, 0750, true);
@@ -133,19 +193,17 @@ class TileProxy {
 				$this->downloadTile($z, $x, $y);
 			}
 		} else {
-			// If the tile doesn't exist, download it
 			$this->downloadTile($z, $x, $y);
 			$modified = gmdate('D, d M Y H:i:s', time()) .' GMT';
 		}
 
-		// Output the tile image
 		if (file_exists($tilePath)) {
 			$expires = gmdate('D, d M Y H:i:s', time() + $this->ttl) .' GMT';
 			header('Expires: ' . $expires);
 			header('Last-Modified: ' . $modified);
 			header('Content-Type: image/png');
 			header('Cache-Control: public, max-age=' . $this->ttl);
-			readfile($this->storage . $z . '/' . $x . '/' . $y . '.png');
+			readfile($tilePath);
 		} else {
 			header('HTTP/1.0 500 Internal Server Error');
 			die('Internal Server Error');
