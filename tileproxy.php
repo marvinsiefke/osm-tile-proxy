@@ -14,16 +14,16 @@ ini_set('session.use_strict_mode', 0);
 require 'config.php';
 
 class rateLimiter {
-	private $sessionLifetime;
-	private $maxRequests;
-	private $maxBanCount;
-	private $banDuration;
+	private $durationSession;
+	private $durationBan;
+	private $maxHits;
+	private $maxBans;
 
-	public function __construct($sessionLifetime = 60, $maxRequests = 800, $maxBanCount = 5, $banDuration = 21600) {
-		$this->sessionLifetime = $sessionLifetime;
-		$this->maxRequests = $maxRequests;
-		$this->maxBanCount = $maxBanCount;
-		$this->banDuration = $banDuration;
+	public function __construct($durationSession = 60, $durationBan = 21600, $maxHits = 800, $maxBans = 5) {
+		$this->durationSession = $durationSession;
+		$this->durationBan = $durationBan;
+		$this->maxHits = $maxHits;
+		$this->maxBans = $maxBans;
 
 		$this->startSessionBasedOnIP();
 		$this->initializeSessionVariables();
@@ -77,22 +77,22 @@ class rateLimiter {
 
 		$sinceIntervalStart = time() - $_SESSION['timeStart'];
 
-		if ($sinceIntervalStart > $this->sessionLifetime) {
+		if ($sinceIntervalStart > $this->durationSession) {
 			$_SESSION['timeStart'] = time();
 			$_SESSION['countHits'] = 1;
 		} else {
 			$_SESSION['countHits']++;
 		}
 
-		if ($_SESSION['countHits'] > $this->maxRequests) {
+		if ($_SESSION['countHits'] > $this->maxHits) {
 			$this->handleBan();
 		}
 	}
 
 	public function handleBan() {
-		if ($_SESSION['countBans'] < $this->maxBanCount) {
+		if ($_SESSION['countBans'] < $this->maxBans) {
 			$_SESSION['countBans']++;
-			if ($_SESSION['countBans'] >= $this->maxBanCount) {
+			if ($_SESSION['countBans'] >= $this->maxBans) {
 				$this->executeBan();
 			}
 		}
@@ -102,7 +102,7 @@ class rateLimiter {
 	}
 
 	public function executeBan() {
-		$_SESSION['timeBannedUntil'] = time() + $this->banDuration;
+		$_SESSION['timeBannedUntil'] = time() + $this->durationBan;
 		header('HTTP/1.1 400 Bad Request');
 		die('You have been banned.');
 	}
