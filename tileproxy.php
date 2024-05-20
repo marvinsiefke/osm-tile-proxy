@@ -105,6 +105,7 @@ class rateLimiter {
 	public function executeBan() {
 		$_SESSION['timeBannedUntil'] = time() + $this->durationBan;
 		header('HTTP/1.1 400 Bad Request');
+		error_log('Hard ban executed for '.session_id().' after '.$_SESSION['countBans'].' soft bans', 0);
 		die('You have been banned.');
 	}
 }
@@ -145,9 +146,10 @@ class tileProxy {
 		curl_setopt($ch, CURLOPT_FAILONERROR, true);
 
 		if (!curl_exec($ch)) {
-			curl_close($ch);
-			fclose($fh);
 			unlink($filePath);
+			$errorMessage = curl_error($ch);
+			$errorCode = curl_errno($ch);
+			error_log('Error getting tile. cURL Error ('.$errorCode.'): '.$errorMessage, 0);
 			throw new Exception('Error getting tile');
 		}
 
