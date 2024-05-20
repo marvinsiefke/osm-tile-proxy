@@ -112,17 +112,17 @@ class rateLimiter {
 class tileProxy {
 	private $operator;
 	private $trustedHosts;
-	private $storage;
-	private $tileserver;
 	private $ttl;
+	private $tileserver;
+	private $storage;
 	private $rateLimiter;
 
-	public function __construct($operator, $trustedHosts = [], $storage = 'cache/', $tileserver = 'https://tile.openstreetmap.org/{z}/{x}/{y}.png', $ttl = 86400 * 31) {
-		$this->storage = $storage;
-		$this->trustedHosts = $trustedHosts;
+	public function __construct($operator, $trustedHosts = [], $ttl = 86400 * 31, $tileserver = 'https://tile.openstreetmap.org/{z}/{x}/{y}.png', $storage = 'cache/') {
 		$this->operator = $operator;
-		$this->tileserver = $tileserver;
+		$this->trustedHosts = $trustedHosts;
 		$this->ttl = $ttl;
+		$this->tileserver = $tileserver;
+		$this->storage = $storage;
 
 		$this->rateLimiter = new rateLimiter();
 		$this->processRequest();
