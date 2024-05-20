@@ -25,8 +25,8 @@ class rateLimiter {
 		$this->maxHits = $maxHits;
 		$this->maxBans = $maxBans;
 
-		$this->startSessionBasedOnIP();
-		$this->initializeSessionVariables();
+		$this->startSession();
+		$this->initializeSession();
 		$this->checkRateLimit();
 	}
 
@@ -52,7 +52,7 @@ class rateLimiter {
 		return false;
 	}
 
-	private function startSessionBasedOnIP() {
+	private function startSession() {
 		$ip = $this->getIp();
 		if ($ip !== false) {
 			$ipHash = md5($ip);
@@ -61,7 +61,7 @@ class rateLimiter {
 		session_start();
 	}
 
-	private function initializeSessionVariables() {
+	private function initializeSession() {
 		$defaults = ['timeStarted' => time(), 'timeBannedUntil' => 0, 'countHits' => 0, 'countBans' => 0];
 
 		foreach ($defaults as $key => $value) {
