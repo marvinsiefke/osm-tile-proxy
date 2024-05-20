@@ -11,5 +11,3 @@ $trustedHosts = array(
 	'domain.com',
 	'anotherdomain.net'
 );
-$sessionLifetime = 60;
-$maxRequests = 1000;
