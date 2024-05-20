@@ -14,13 +14,13 @@ ini_set('session.use_strict_mode', 0);
 require 'config.php';
 
 class rateLimiter {
-	private $durationSession;
+	private $durationInterval;
 	private $durationBan;
 	private $maxHits;
 	private $maxBans;
 
-	public function __construct($durationSession = 60, $durationBan = 21600, $maxHits = 800, $maxBans = 5) {
-		$this->durationSession = $durationSession;
+	public function __construct($durationInterval = 60, $durationBan = 21600, $maxHits = 800, $maxBans = 5) {
+		$this->durationInterval = $durationInterval;
 		$this->durationBan = $durationBan;
 		$this->maxHits = $maxHits;
 		$this->maxBans = $maxBans;
@@ -77,7 +77,7 @@ class rateLimiter {
 
 		$sinceIntervalStart = time() - $_SESSION['timeStarted'];
 
-		if ($sinceIntervalStart > $this->durationSession) {
+		if ($sinceIntervalStart > $this->durationInterval) {
 			$_SESSION['timeStarted'] = time();
 			$_SESSION['countHits'] = 1;
 		} else {
