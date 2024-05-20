@@ -7,7 +7,7 @@ RewriteRule ^(.*)/(.*)/(.*).png$ tileproxy.php?z=$1&x=$2&y=$3 [NC,L]
 	AddOutputFilterByType DEFLATE text/html text/plain text/css application/json
 	AddOutputFilterByType DEFLATE text/javascript application/javascript application/x-javascript
 	AddOutputFilterByType DEFLATE text/xml application/xml text/x-component
-	<FilesMatch "\.(ttf|otf|eot|svg|html|css|js)$" >
+	<FilesMatch "\.(css|js)$" >
 		SetOutputFilter DEFLATE
 	</FilesMatch>
 </IfModule>
