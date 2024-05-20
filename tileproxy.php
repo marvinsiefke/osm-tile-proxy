@@ -28,11 +28,13 @@ class RateLimiter {
 		foreach ($ipKeys as $key) {
 			if (!empty($_SERVER[$key])) {
 				$ip = $_SERVER[$key];
-				// Handle the case where HTTP_X_FORWARDED_FOR contains multiple IP addresses
+				
 				if ($key === 'HTTP_X_FORWARDED_FOR') {
+					// Handle the case where HTTP_X_FORWARDED_FOR contains multiple IP addresses
 					$ipList = explode(',', $ip);
 					$ip = trim(end($ipList)); 
 				}
+				
 				if (filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_IPV4 | FILTER_FLAG_IPV6)) {
 					return $ip;
 				}
@@ -52,44 +54,44 @@ class RateLimiter {
 	}
 
 	private function initializeSessionVariables() {
-		if (!isset($_SESSION['tzero'])) {
-			$_SESSION['tzero'] = time();
+		if (!isset($_SESSION['timeStart'])) {
+			$_SESSION['timeStart'] = time();
 		}
-		if (!isset($_SESSION['hits'])) {
-			$_SESSION['hits'] = 0;
+		if (!isset($_SESSION['countHits'])) {
+			$_SESSION['countHits'] = 0;
 		}
-		if (!isset($_SESSION['bans'])) {
-			$_SESSION['bans'] = 0;
+		if (!isset($_SESSION['countBans'])) {
+			$_SESSION['countBans'] = 0;
 		}
-		if (!isset($_SESSION['bannedUntil'])) {
-			$_SESSION['bannedUntil'] = 0;
+		if (!isset($_SESSION['timeBannedUntil'])) {
+			$_SESSION['timeBannedUntil'] = 0;
 		}
 	}
 
 	private function checkRateLimit() {
-		if ($_SESSION['bannedUntil'] > time()) {
+		if ($_SESSION['timeBannedUntil'] > time()) {
 			header('HTTP/1.1 400 Bad Request');
 			die('You have been banned. Please try again later.');
 		}
 
-		$sinceIntervalStart = time() - $_SESSION['tzero'];
+		$sinceIntervalStart = time() - $_SESSION['timeStart'];
 
 		if ($sinceIntervalStart > $this->sessionLifetime) {
-			$_SESSION['tzero'] = time();
-			$_SESSION['hits'] = 1;
+			$_SESSION['timeStart'] = time();
+			$_SESSION['countHits'] = 1;
 		} else {
-			$_SESSION['hits']++;
+			$_SESSION['countHits']++;
 		}
 
-		if ($_SESSION['hits'] > $this->maxRequests) {
+		if ($_SESSION['countHits'] > $this->maxRequests) {
 			$this->handleBan();
 		}
 	}
 
 	public function handleBan() {
-		if ($_SESSION['bans'] < $this->maxBanCount) {
-			$_SESSION['bans']++;
-			if ($_SESSION['bans'] >= $this->maxBanCount) {
+		if ($_SESSION['countBans'] < $this->maxBanCount) {
+			$_SESSION['countBans']++;
+			if ($_SESSION['countBans'] >= $this->maxBanCount) {
 				$this->executeBan();
 			}
 		}
@@ -99,7 +101,7 @@ class RateLimiter {
 	}
 
 	public function executeBan() {
-		$_SESSION['bannedUntil'] = time() + $this->banDuration;
+		$_SESSION['timeBannedUntil'] = time() + $this->banDuration;
 		header('HTTP/1.1 400 Bad Request');
 		die('You have been banned.');
 	}
