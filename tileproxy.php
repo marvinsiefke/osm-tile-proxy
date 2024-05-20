@@ -7,7 +7,7 @@
  * License: GNU GPLv3
  */
 
-ini_set('display_errors', 1);
+ini_set('display_errors', 0);
 ini_set('log_errors', 1);
 ini_set('max_execution_time', 30);
 ini_set('session.use_strict_mode', 0);
@@ -158,7 +158,7 @@ class tileProxy {
 	private function processRequest() {
 		header('X-Content-Type-Options: nosniff');
 		header('X-XSS-Protection: 1; mode=block');
-		
+
 		$z = filter_input(INPUT_GET, 'z', FILTER_VALIDATE_INT, ['options' => ['min_range' => 0, 'max_range' => 20]]);
 		$x = filter_input(INPUT_GET, 'x', FILTER_VALIDATE_INT, ['options' => ['min_range' => 0]]);
 		$y = filter_input(INPUT_GET, 'y', FILTER_VALIDATE_INT, ['options' => ['min_range' => 0]]);
