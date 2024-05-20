@@ -60,17 +60,10 @@ class rateLimiter {
 	}
 
 	private function initializeSessionVariables() {
-		if (!isset($_SESSION['timeStart'])) {
-			$_SESSION['timeStart'] = time();
-		}
-		if (!isset($_SESSION['countHits'])) {
-			$_SESSION['countHits'] = 0;
-		}
-		if (!isset($_SESSION['countBans'])) {
-			$_SESSION['countBans'] = 0;
-		}
-		if (!isset($_SESSION['timeBannedUntil'])) {
-			$_SESSION['timeBannedUntil'] = 0;
+		$defaults = ['timeStart' => time(), 'countHits' => 0, 'countBans' => 0, 'timeBannedUntil' => 0];
+
+		foreach ($defaults as $key => $value) {
+			$_SESSION[$key] = $_SESSION[$key] ?? $value;
 		}
 	}
 
