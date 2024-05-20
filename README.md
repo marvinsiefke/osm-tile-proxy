@@ -1,0 +1,9 @@
+# osm-tile-proxy
+osm-tile-proxy is a smart and lightweight proxy for OpenStreetMap tileservers.
+
+## Usage
+This script runs even on shared hosters. It does not have any specific requirements apart any newer PHP version is needed. The rewrite rules in the .htaccess file adapt the typical url schema for tileservers on this proxy: https://proxy.domain.com/{z}/{x}/{y}.png
+
+## Configuration
+
+To comply with the Terms of Use of the OpenStreetMap Tileserver it is strongly recommended to provide a email address of the administrator in the config.php. You can also define trusted hosts.
