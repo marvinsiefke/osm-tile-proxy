@@ -11,7 +11,7 @@ class RateLimiter {
 	private $maxBanCount;
 	private $banDuration;
 
-	public function __construct($sessionLifetime = 60, $maxRequests = 1000, $maxBanCount = 5, $banDuration = 21600) {
+	public function __construct($sessionLifetime = 60, $maxRequests = 800, $maxBanCount = 5, $banDuration = 21600) {
 		$this->sessionLifetime = $sessionLifetime;
 		$this->maxRequests = $maxRequests;
 		$this->maxBanCount = $maxBanCount;
@@ -44,13 +44,11 @@ class RateLimiter {
 
 	private function startSessionBasedOnIP() {
 		$ip = $this->getIp();
-		if (session_status() === PHP_SESSION_NONE) {
-			if ($ip !== false) {
-				$ipHash = md5($ip);
-				session_id($ipHash);
-				session_start();
-			}
+		if ($ip !== false) {
+			$ipHash = md5($ip);
+			session_id($ipHash);
 		}
+		session_start();
 	}
 
 	private function initializeSessionVariables() {
@@ -70,7 +68,7 @@ class RateLimiter {
 
 	private function checkRateLimit() {
 		if ($_SESSION['bannedUntil'] > time()) {
-			header('HTTP/1.0 400 Bad Request');
+			header('HTTP/1.1 400 Bad Request');
 			die('You have been banned. Please try again later.');
 		}
 
@@ -102,7 +100,7 @@ class RateLimiter {
 
 	public function executeBan() {
 		$_SESSION['bannedUntil'] = time() + $this->banDuration;
-		header('HTTP/1.0 400 Bad Request');
+		header('HTTP/1.1 400 Bad Request');
 		die('You have been banned.');
 	}
 }
@@ -159,8 +157,8 @@ class TileProxy {
 		$x = filter_input(INPUT_GET, 'x', FILTER_VALIDATE_INT, ['options' => ['min_range' => 0]]);
 		$y = filter_input(INPUT_GET, 'y', FILTER_VALIDATE_INT, ['options' => ['min_range' => 0]]);
 		if ($z === false || $x === false || $y === false) {
-			$this->rateLimiter->executeBan(); // Ban immediately if invalid parameters are detected
-			header('HTTP/1.0 400 Bad Request');
+			$this->rateLimiter->executeBan(); 
+			header('HTTP/1.1 400 Bad Request');
 			die('Invalid parameters');
 		}
 
@@ -199,13 +197,14 @@ class TileProxy {
 
 		if (file_exists($tilePath)) {
 			$expires = gmdate('D, d M Y H:i:s', time() + $this->ttl) .' GMT';
+			header('HTTP/1.1 200 OK');
 			header('Expires: ' . $expires);
 			header('Last-Modified: ' . $modified);
 			header('Content-Type: image/png');
 			header('Cache-Control: public, max-age=' . $this->ttl);
 			readfile($tilePath);
 		} else {
-			header('HTTP/1.0 500 Internal Server Error');
+			header('HTTP/1.1 500 Internal Server Error');
 			die('Internal Server Error');
 		}
 	}
