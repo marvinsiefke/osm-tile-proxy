@@ -62,7 +62,7 @@ class rateLimiter {
 	}
 
 	private function initializeSessionVariables() {
-		$defaults = ['timeStart' => time(), 'countHits' => 0, 'countBans' => 0, 'timeBannedUntil' => 0];
+		$defaults = ['timeStarted' => time(), 'timeBannedUntil' => 0, 'countHits' => 0, 'countBans' => 0];
 
 		foreach ($defaults as $key => $value) {
 			$_SESSION[$key] = $_SESSION[$key] ?? $value;
@@ -75,10 +75,10 @@ class rateLimiter {
 			die('You have been banned. Please try again later.');
 		}
 
-		$sinceIntervalStart = time() - $_SESSION['timeStart'];
+		$sinceIntervalStart = time() - $_SESSION['timeStarted'];
 
 		if ($sinceIntervalStart > $this->durationSession) {
-			$_SESSION['timeStart'] = time();
+			$_SESSION['timeStarted'] = time();
 			$_SESSION['countHits'] = 1;
 		} else {
 			$_SESSION['countHits']++;
