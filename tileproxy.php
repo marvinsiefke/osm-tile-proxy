@@ -148,7 +148,7 @@ class tileProxy {
 			curl_close($ch);
 			fclose($fh);
 			unlink($filePath);
-			throw new Exception('Error providing tile');
+			throw new Exception('Error getting tile');
 		}
 
 		curl_close($ch);
@@ -156,6 +156,9 @@ class tileProxy {
 	}
 
 	private function processRequest() {
+		header('X-Content-Type-Options: nosniff');
+		header('X-XSS-Protection: 1; mode=block');
+
 		$z = filter_input(INPUT_GET, 'z', FILTER_VALIDATE_INT, ['options' => ['min_range' => 0, 'max_range' => 20]]);
 		$x = filter_input(INPUT_GET, 'x', FILTER_VALIDATE_INT, ['options' => ['min_range' => 0]]);
 		$y = filter_input(INPUT_GET, 'y', FILTER_VALIDATE_INT, ['options' => ['min_range' => 0]]);
@@ -171,7 +174,7 @@ class tileProxy {
 			header('Access-Control-Allow-Origin: ' . $origin);
 		}
 
-		// Referer-Check
+		// Referer
 		$referer = $_SERVER['HTTP_REFERER'] ?? '';
 		if (!empty($referer)) {
 			$refererHost = parse_url($referer, PHP_URL_HOST);
