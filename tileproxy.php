@@ -105,7 +105,7 @@ class rateLimiter {
 	public function executeBan() {
 		$_SESSION['timeBannedUntil'] = time() + $this->durationBan;
 		header('HTTP/1.1 400 Bad Request');
-		error_log('Hard ban executed for '.session_id().' after '.$_SESSION['countBans'].' soft bans', 0);
+		error_log('Hard ban executed for '.session_id().' after '.$_SESSION['countBans'].' soft bans till '.date('d-M-Y H:i:s', $_SESSION['timeBannedUntil']), 0);
 		die('You have been banned.');
 	}
 }
