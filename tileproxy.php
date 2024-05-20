@@ -2,7 +2,7 @@
 
 require 'config.php';
 
-set_time_limit(30);
+ini_set('max_execution_time', 30);
 ini_set('session.use_strict_mode', 0);
 
 class RateLimiter {
@@ -34,7 +34,7 @@ class RateLimiter {
 					$ipList = explode(',', $ip);
 					$ip = trim(end($ipList)); 
 				}
-				
+
 				if (filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_IPV4 | FILTER_FLAG_IPV6)) {
 					return $ip;
 				}
