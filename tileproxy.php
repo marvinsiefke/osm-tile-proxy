@@ -1,9 +1,9 @@
 <?php
 /*
- * osm-tile-proxy
+ * pepper-osmproxy
  * Author: Marvin Siefke
  * Author URI: https://pepper.green
- * GitHub: https://github.com/marvinsiefke/osm-tile-proxy/
+ * GitHub: https://github.com/marvinsiefke/pepper-osmproxy/
  * License: GNU GPLv3
  */
 
