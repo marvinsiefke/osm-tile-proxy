@@ -12,4 +12,4 @@ This script runs even on shared hosters. It does not have any specific requireme
 
 ## Configuration
 
-According to the Terms of Use of the OpenStreetMap.org Tileserver it is strongly recommended to provide a email address of the administrator in the config.php. You can also define trusted hosts.
+According to the Terms of Use of the OpenStreetMap.org Tileserver it is strongly recommended to provide an email address of the administrator in the config.php. You can also define trusted hosts.
