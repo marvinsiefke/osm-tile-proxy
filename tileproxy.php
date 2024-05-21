@@ -174,6 +174,7 @@ class tileProxy {
 		$origin = $_SERVER['HTTP_ORIGIN'] ?? '';
 		if (!empty($trustedHosts) && !empty($origin)) {
 			if (!in_array(parse_url($origin, PHP_URL_HOST), $this->trustedHosts)) {
+				$this->rateLimiter->softBan(); 
 				header('HTTP/1.1 403 Forbidden');
 				die('Access denied');
 			}
