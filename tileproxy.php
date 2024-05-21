@@ -20,7 +20,7 @@ class rateLimiter {
 	private $maxHits;
 	private $maxBans;
 
-	public function __construct($durationInterval = 60, $durationBan = 21600, $maxHits = 800, $maxBans = 5) {
+	public function __construct($durationInterval = 60, $durationBan = 21600, $maxHits = 500, $maxBans = 20) {
 		$this->durationInterval = $durationInterval;
 		$this->durationBan = $durationBan;
 		$this->maxHits = $maxHits;
@@ -86,15 +86,15 @@ class rateLimiter {
 		}
 
 		if ($_SESSION['countHits'] > $this->maxHits) {
-			$this->handleBan();
+			$this->softBan();
 		}
 	}
 
-	public function handleBan() {
+	public function softBan() {
 		if ($_SESSION['countBans'] < $this->maxBans) {
 			$_SESSION['countBans']++;
 			if ($_SESSION['countBans'] >= $this->maxBans) {
-				$this->executeBan();
+				$this->hardBan();
 			}
 		}
 
@@ -102,10 +102,10 @@ class rateLimiter {
 		die('Too many requests');
 	}
 
-	public function executeBan() {
+	public function hardBan() {
 		$_SESSION['timeBannedUntil'] = time() + $this->durationBan;
 		header('HTTP/1.1 400 Bad Request');
-		error_log('Hard ban executed for '.session_id().' after '.$_SESSION['countBans'].' soft bans till '.date('d-M-Y H:i:s', $_SESSION['timeBannedUntil']), 0);
+		error_log('Hard ban executed for session '.session_id().' after '.$_SESSION['countBans'].' soft bans till '.date('d-M-Y H:i:s', $_SESSION['timeBannedUntil']), 0);
 		die('You have been banned.');
 	}
 }
@@ -163,7 +163,7 @@ class tileProxy {
 		$x = filter_input(INPUT_GET, 'x', FILTER_VALIDATE_INT, ['options' => ['min_range' => 0]]);
 		$y = filter_input(INPUT_GET, 'y', FILTER_VALIDATE_INT, ['options' => ['min_range' => 0]]);
 		if ($z === false || $x === false || $y === false) {
-			$this->rateLimiter->executeBan(); 
+			$this->rateLimiter->hardBan(); 
 			header('HTTP/1.1 400 Bad Request');
 			die('Invalid parameters');
 		}
