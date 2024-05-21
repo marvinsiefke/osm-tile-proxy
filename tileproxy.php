@@ -10,6 +10,7 @@
 ini_set('display_errors', 0);
 ini_set('log_errors', 1);
 ini_set('max_execution_time', 30);
+ini_set('session.auto_start', 0);
 ini_set('session.use_strict_mode', 0);
 
 require 'config.php';
