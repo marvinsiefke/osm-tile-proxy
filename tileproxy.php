@@ -17,15 +17,15 @@ require 'config.php';
 
 class rateLimiter {
 	private $durationInterval;
-	private $durationBan;
+	private $durationHardBan;
 	private $maxHits;
-	private $maxBans;
+	private $maxSoftBans;
 
-	public function __construct($durationInterval = 60, $durationBan = 21600, $maxHits = 500, $maxBans = 20) {
+	public function __construct($durationInterval = 60, $durationHardBan = 21600, $maxHits = 500, $maxSoftBans = 20) {
 		$this->durationInterval = $durationInterval;
-		$this->durationBan = $durationBan;
+		$this->durationHardBan = $durationHardBan;
 		$this->maxHits = $maxHits;
-		$this->maxBans = $maxBans;
+		$this->maxSoftBans = $maxSoftBans;
 
 		$this->startSession();
 		$this->initializeSession();
@@ -92,9 +92,9 @@ class rateLimiter {
 	}
 
 	public function softBan() {
-		if ($_SESSION['countBans'] < $this->maxBans) {
+		if ($_SESSION['countBans'] < $this->maxSoftBans) {
 			$_SESSION['countBans']++;
-			if ($_SESSION['countBans'] >= $this->maxBans) {
+			if ($_SESSION['countBans'] >= $this->maxSoftBans) {
 				$this->hardBan();
 			}
 		}
@@ -104,7 +104,7 @@ class rateLimiter {
 	}
 
 	public function hardBan() {
-		$_SESSION['timeBannedUntil'] = time() + $this->durationBan;
+		$_SESSION['timeBannedUntil'] = time() + $this->durationHardBan;
 		header('HTTP/1.1 400 Bad Request');
 		error_log('Hard ban executed for session '.session_id().' after '.$_SESSION['countBans'].' soft bans till '.date('d-M-Y H:i:s', $_SESSION['timeBannedUntil']), 0);
 		die('You have been banned.');
@@ -114,15 +114,17 @@ class rateLimiter {
 class tileProxy {
 	private $operator;
 	private $trustedHosts;
-	private $ttl;
+	private $serverTtl;
+	private $browserTtl;
 	private $tileserver;
 	private $storage;
 	private $rateLimiter;
 
-	public function __construct($operator, $trustedHosts = [], $ttl = 86400 * 31, $tileserver = 'https://tile.openstreetmap.org/{z}/{x}/{y}.png', $storage = 'cache/') {
+	public function __construct($operator, $trustedHosts = [], $serverTtl = 86400 * 31, $browserTtl = 86400 * 7, $tileserver = 'https://tile.openstreetmap.org/{z}/{x}/{y}.png', $storage = 'cache/') {
 		$this->operator = $operator;
 		$this->trustedHosts = $trustedHosts;
-		$this->ttl = $ttl;
+		$this->serverTtl = $serverTtl;
+		$this->browserTtl = $browserTtl;
 		$this->tileserver = $tileserver;
 		$this->storage = $storage;
 
@@ -196,7 +198,7 @@ class tileProxy {
 		if (file_exists($tilePath)) {
 			$age = filemtime($tilePath);
 			$modified = gmdate('D, d M Y H:i:s', $age) .' GMT';
-			if ($age + $this->ttl <= time()) {
+			if ($age + $this->serverTtl <= time()) {
 				$this->downloadTile($z, $x, $y);
 			}
 		} else {
@@ -205,12 +207,12 @@ class tileProxy {
 		}
 
 		if (file_exists($tilePath)) {
-			$expires = gmdate('D, d M Y H:i:s', time() + $this->ttl) .' GMT';
+			$expires = gmdate('D, d M Y H:i:s', time() + $this->browserTtl) .' GMT';
 			header('HTTP/1.1 200 OK');
 			header('Expires: ' . $expires);
 			header('Last-Modified: ' . $modified);
 			header('Content-Type: image/png');
-			header('Cache-Control: public, max-age=' . $this->ttl);
+			header('Cache-Control: public, max-age=' . $this->browserTtl);
 			readfile($tilePath);
 		} else {
 			header('HTTP/1.1 500 Internal Server Error');
