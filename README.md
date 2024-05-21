@@ -29,4 +29,4 @@ According to the ToS of the openstreetmap.org tile server, it is strongly recomm
 - `$maxSoftBans` The allowed number of soft bans. Default: 20 soft bans.
 
 ## Planned features
-- Vector tile support when the tileservers are ready :) According to the official osm blog it's already the year of the OpenStreetMap vector maps.
+- Vector tile support when the tileservers are ready :) According to the official osm blog it's already the year of the OpenStreetMap vector maps, so let´s see...
