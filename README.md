@@ -27,3 +27,6 @@ According to the ToS of the openstreetmap.org tile server, it is strongly recomm
 - `$browserTtl` The time to live of the tiles in the browser cache. Default: 86400 * 7 sec. (7 days).
 - `$tileserver` The url of the tiles in this format: `https://tile.openstreetmap.org/{z}/{x}/{y}.png` (also default).
 - `$storage` The directory of the file cache. Default: `cache/`
+
+## Planned features
+- Vector tile support when the tileservers are ready :) According to the official osm blog it's already the year of the OpenStreetMap vector maps.
