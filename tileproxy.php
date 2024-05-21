@@ -171,21 +171,11 @@ class tileProxy {
 			die('Invalid parameters');
 		}
 
-		if (!empty($trustedHosts)) {
-			// CORS
-			$origin = $_SERVER['HTTP_ORIGIN'] ?? '';
-			if (in_array(parse_url($origin, PHP_URL_HOST), $this->trustedHosts)) {
-				header('Access-Control-Allow-Origin: ' . $origin);
-			}
-
-			// Referer
-			$referer = $_SERVER['HTTP_REFERER'] ?? '';
-			if (!empty($referer)) {
-				$refererHost = parse_url($referer, PHP_URL_HOST);
-				if (!in_array($refererHost, $this->trustedHosts)) {
-					header('HTTP/1.1 403 Forbidden');
-					die('Access denied');
-				}
+		$origin = $_SERVER['HTTP_ORIGIN'] ?? '';
+		if (!empty($trustedHosts) && !empty($origin)) {
+			if (!in_array(parse_url($origin, PHP_URL_HOST), $this->trustedHosts)) {
+				header('HTTP/1.1 403 Forbidden');
+				die('Access denied');
 			}
 		}
 
