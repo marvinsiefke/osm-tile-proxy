@@ -21,7 +21,7 @@ class rateLimiter {
 	private $maxHits;
 	private $maxSoftBans;
 
-	public function __construct($durationInterval = 60, $durationHardBan = 21600, $maxHits = 500, $maxSoftBans = 20) {
+	public function __construct($durationInterval = 60, $durationHardBan = 21600, $maxHits = 1000, $maxSoftBans = 20) {
 		$this->durationInterval = $durationInterval;
 		$this->durationHardBan = $durationHardBan;
 		$this->maxHits = $maxHits;
@@ -113,16 +113,16 @@ class rateLimiter {
 
 class tileProxy {
 	private $operator;
-	private $trustedHosts;
+	private $allowedReferers;
 	private $serverTtl;
 	private $browserTtl;
 	private $tileserver;
 	private $storage;
 	private $rateLimiter;
 
-	public function __construct($operator, $trustedHosts = [], $serverTtl = 86400 * 31, $browserTtl = 86400 * 7, $tileserver = 'https://tile.openstreetmap.org/{z}/{x}/{y}.png', $storage = 'cache/') {
+	public function __construct($operator, $allowedReferers = [], $serverTtl = 86400 * 31, $browserTtl = 86400 * 7, $tileserver = 'https://tile.openstreetmap.org/{z}/{x}/{y}.png', $storage = 'cache/') {
 		$this->operator = $operator;
-		$this->trustedHosts = $trustedHosts;
+		$this->allowedReferers = $allowedReferers;
 		$this->serverTtl = $serverTtl;
 		$this->browserTtl = $browserTtl;
 		$this->tileserver = $tileserver;
@@ -130,6 +130,18 @@ class tileProxy {
 
 		$this->rateLimiter = new rateLimiter();
 		$this->processRequest();
+	}
+
+	private function tileToLatLon($z, $x, $y) {
+		$n = pow(2, $z);
+		$lon_deg = $x / $n * 360 - 180;
+		$lat_rad = atan(sinh(pi() * (1 - 2 * $y / $n)));
+		$lat_deg = rad2deg($lat_rad);
+		return [$lat_deg, $lon_deg];
+	}
+
+	private function checkBounds($lat, $lon, $bounds) {
+		return $lat >= $bounds[0][0] && $lat <= $bounds[1][0] && $lon >= $bounds[0][1] && $lon <= $bounds[1][1];
 	}
 
 	private function downloadTile($z, $x, $y) {
@@ -171,12 +183,28 @@ class tileProxy {
 			die('Invalid parameters');
 		}
 
-		$origin = $_SERVER['HTTP_ORIGIN'] ?? '';
-		if (!empty($trustedHosts) && !empty($origin)) {
-			if (!in_array(parse_url($origin, PHP_URL_HOST), $this->trustedHosts)) {
-				$this->rateLimiter->softBan(); 
-				header('HTTP/1.1 403 Forbidden');
-				die('Access denied');
+		$referer = $_SERVER['HTTP_REFERER'] ?? '';
+		if (!empty($this->allowedReferers) && !empty($referer)) {
+			$refererHost = parse_url($referer, PHP_URL_HOST);
+			
+			if (!array_key_exists($refererHost, $this->allowedReferers)) {
+				$this->rateLimiter->softBan();
+			}
+
+			else {
+				if (array_key_exists('hostname', $this->allowedReferers[$refererHost])) {
+					if($this->allowedReferers[$refererHost]['hostname'] != $_SERVER['HTTP_HOST']) {
+						$this->rateLimiter->softBan();
+					}
+				}
+
+				if (array_key_exists('maxBounds', $this->allowedReferers[$refererHost])) {
+					$latLon = $this->tileToLatLon($z, $x, $y);
+					$bounds = $this->allowedReferers[$refererHost]['maxBounds'];
+					if (!$this->checkBounds($latLon[0], $latLon[1], $bounds)) {
+						$this->rateLimiter->softBan();
+					}
+				}
 			}
 		}
 
@@ -213,4 +241,4 @@ class tileProxy {
 }
 
 // Usage
-new tileProxy($operator, $trustedHosts);
+new tileProxy($operator, $allowedReferers);
