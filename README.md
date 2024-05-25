@@ -16,7 +16,7 @@ According to the ToS of the openstreetmap.org tile server, it is strongly recomm
 
 ### tileProxy Class Options
 - **`$operator` Required according to the ToS of the openstreetmap.org Tileserver:** The email address of the administrator.
-- `$trustedHosts` An array of domains that are allowed as referrers. Default: empty (all referrers allowed).
+- `$allowedReferers` An array of domains that are allowed as referrers. The referer can be limited to a specific `hostname` (of the proxy) or a specific area `maxBounds`. Default: empty (all referrers allowed).
 - `$serverTtl` The time to live of the tiles in the file cache of the web server. Default: 86400 * 31 seconds (31 days).
 - `$browserTtl` The time to live of the tiles in the browser cache. Default: 86400 * 7 sec. (7 days).
 - `$tileserver` The url of the tiles in this format: `https://tile.openstreetmap.org/{z}/{x}/{y}.png` (also default).
