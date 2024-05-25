@@ -2,7 +2,7 @@
 pepper-osmproxy is a smart and lightweight proxy with caching for OpenStreetMap tile servers.
 
 ## Usage
-This script runs even on shared hosting environments. It does not have any specific requirements other than needing a newer PHP version. The rewrite rules in the .htaccess file adapt the typical URL schema for tile servers on this proxy: https://proxy.domain.com/{z}/{x}/{y}.png
+This script runs even on shared hosting environments. It does not have any specific requirements other than needing a newer PHP version with curl. The rewrite rules in the .htaccess file adapt the typical URL schema for tile servers on this proxy: https://proxy.domain.com/{z}/{x}/{y}.png
 
 ## Features
 - Simple file caching
