@@ -134,13 +134,13 @@ class tileProxy {
 
 	private function tileToLatLon($z, $x, $y) {
 		$n = pow(2, $z);
-		$lon_deg = $x / $n * 360 - 180;
-		$lat_rad = atan(sinh(pi() * (1 - 2 * $y / $n)));
-		$lat_deg = rad2deg($lat_rad);
-		return [$lat_deg, $lon_deg];
+		$lonDeg = $x / $n * 360 - 180;
+		$latRad = atan(sinh(pi() * (1 - 2 * $y / $n)));
+		$latDeg = rad2deg($latRad);
+		return [$latDeg, $lonDeg];
 	}
 
-	private function checkBounds($lat, $lon, $bounds) {
+	private function isInBounds($lat, $lon, $bounds) {
 		return $lat >= $bounds[0][0] && $lat <= $bounds[1][0] && $lon >= $bounds[0][1] && $lon <= $bounds[1][1];
 	}
 
@@ -201,7 +201,7 @@ class tileProxy {
 				if (array_key_exists('maxBounds', $this->allowedReferers[$refererHost])) {
 					$latLon = $this->tileToLatLon($z, $x, $y);
 					$bounds = $this->allowedReferers[$refererHost]['maxBounds'];
-					if (!$this->checkBounds($latLon[0], $latLon[1], $bounds)) {
+					if (!$this->isInBounds($latLon[0], $latLon[1], $bounds)) {
 						$this->rateLimiter->softBan();
 					}
 				}
