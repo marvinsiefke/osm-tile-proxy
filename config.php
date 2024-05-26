@@ -7,8 +7,8 @@ $allowedReferers = [
 	'domain2.com' => [
 		'hostname' => 'proxy.domain2.com',
 		'maxBounds' => [
-			[52.250, 12.550],
-			[52.950, 13.750]
+			[52.250, 12.550], // south west
+			[52.950, 13.750] // north east
 		]
 	],
 ];
