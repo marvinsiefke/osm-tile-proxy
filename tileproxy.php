@@ -198,6 +198,18 @@ class tileProxy {
 					}
 				}
 
+				if (array_key_exists('maxZoom', $this->allowedReferers[$refererHost])) {
+					if($z > $this->allowedReferers[$refererHost]['maxZoom']) {
+						$this->rateLimiter->softBan();
+					}
+				}
+
+				if (array_key_exists('minZoom', $this->allowedReferers[$refererHost])) {
+					if($z < $this->allowedReferers[$refererHost]['minZoom']) {
+						$this->rateLimiter->softBan();
+					}
+				}
+
 				if (array_key_exists('maxBounds', $this->allowedReferers[$refererHost])) {
 					$latLon = $this->tileToLatLon($z, $x, $y);
 					$bounds = $this->allowedReferers[$refererHost]['maxBounds'];
