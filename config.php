@@ -9,6 +9,8 @@ $allowedReferers = [
 		'maxBounds' => [
 			[52.250, 12.550], // south west
 			[52.950, 13.750] // north east
-		]
+		],
+		'maxZoom' => 18,
+		'minZoom' => 12
 	],
 ];
