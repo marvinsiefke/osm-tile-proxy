@@ -2,15 +2,17 @@
 
 // Proxy settings
 $operator = 'admin@domain.com';
-$allowedReferers = [
-	'domain.com' => [],
-	'domain2.com' => [
-		'hostname' => 'proxy.domain2.com',
-		'maxBounds' => [
-			[52.250, 12.550], // south west
-			[52.950, 13.750] // north east
+$trustedHosts = [
+	'proxy.domain.de' => [
+		'referers' => [
+			'domain.de' // allowed referers
+		],
+		'maxBounds' => [ 
+			[47.25, 5.875], // south west
+			[53.05, 13.85] // north east
 		],
 		'maxZoom' => 18,
-		'minZoom' => 12
+		'minZoom' => 11
 	],
+	'proxy.domain.com' => [], // without limitations
 ];
