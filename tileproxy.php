@@ -21,7 +21,7 @@ class rateLimiter {
 	private $maxHits;
 	private $maxSoftBans;
 
-	public function __construct($durationInterval = 60, $durationHardBan = 21600, $maxHits = 1000, $maxSoftBans = 20) {
+	public function __construct($durationInterval = 60, $durationHardBan = 21600, $maxHits = 500, $maxSoftBans = 50) {
 		$this->durationInterval = $durationInterval;
 		$this->durationHardBan = $durationHardBan;
 		$this->maxHits = $maxHits;
@@ -113,16 +113,16 @@ class rateLimiter {
 
 class tileProxy {
 	private $operator;
-	private $allowedReferers;
+	private $trustedHosts;
 	private $serverTtl;
 	private $browserTtl;
 	private $tileserver;
 	private $storage;
 	private $rateLimiter;
 
-	public function __construct($operator, $allowedReferers = [], $serverTtl = 86400 * 31, $browserTtl = 86400 * 7, $tileserver = 'https://tile.openstreetmap.org/{z}/{x}/{y}.png', $storage = 'cache/') {
+	public function __construct($operator, $trustedHosts = [], $serverTtl = 86400 * 31, $browserTtl = 86400 * 7, $tileserver = 'https://tile.openstreetmap.org/{z}/{x}/{y}.png', $storage = 'cache/') {
 		$this->operator = $operator;
-		$this->allowedReferers = $allowedReferers;
+		$this->trustedHosts = $trustedHosts;
 		$this->serverTtl = $serverTtl;
 		$this->browserTtl = $browserTtl;
 		$this->tileserver = $tileserver;
@@ -183,36 +183,34 @@ class tileProxy {
 			die('Invalid parameters');
 		}
 
-		$referer = $_SERVER['HTTP_REFERER'] ?? '';
-		if (!empty($this->allowedReferers) && !empty($referer)) {
-			$refererHost = parse_url($referer, PHP_URL_HOST);
-			
-			if (!array_key_exists($refererHost, $this->allowedReferers)) {
-				$this->rateLimiter->softBan();
+		$host = $_SERVER['HTTP_HOST'];
+		if (!empty($this->trustedHosts) && !empty($host)) {
+			if (!array_key_exists($host, $this->trustedHosts)) {
+				$this->rateLimiter->hardBan();
 			}
-
 			else {
-				if (array_key_exists('hostname', $this->allowedReferers[$refererHost])) {
-					if($this->allowedReferers[$refererHost]['hostname'] != $_SERVER['HTTP_HOST']) {
+				$referer = $_SERVER['HTTP_REFERER'] ?? '';
+				if (!empty($referer) && array_key_exists('referers', $this->trustedHosts[$host])) {
+					if (!in_array(parse_url($referer, PHP_URL_HOST), $this->trustedHosts[$host]['referers'])) {
+						$this->rateLimiter->softBan(); 
+					}
+				}
+
+				if (array_key_exists('maxZoom', $this->trustedHosts[$host])) {
+					if($z > $this->trustedHosts[$host]['maxZoom']) {
 						$this->rateLimiter->softBan();
 					}
 				}
 
-				if (array_key_exists('maxZoom', $this->allowedReferers[$refererHost])) {
-					if($z > $this->allowedReferers[$refererHost]['maxZoom']) {
+				if (array_key_exists('minZoom', $this->trustedHosts[$host])) {
+					if($z < $this->trustedHosts[$host]['minZoom']) {
 						$this->rateLimiter->softBan();
 					}
 				}
 
-				if (array_key_exists('minZoom', $this->allowedReferers[$refererHost])) {
-					if($z < $this->allowedReferers[$refererHost]['minZoom']) {
-						$this->rateLimiter->softBan();
-					}
-				}
-
-				if (array_key_exists('maxBounds', $this->allowedReferers[$refererHost])) {
+				if (array_key_exists('maxBounds', $this->trustedHosts[$host])) {
 					$latLon = $this->tileToLatLon($z, $x, $y);
-					$bounds = $this->allowedReferers[$refererHost]['maxBounds'];
+					$bounds = $this->trustedHosts[$host]['maxBounds'];
 					if (!$this->isInBounds($latLon[0], $latLon[1], $bounds)) {
 						$this->rateLimiter->softBan();
 					}
@@ -253,4 +251,4 @@ class tileProxy {
 }
 
 // Usage
-new tileProxy($operator, $allowedReferers);
+new tileProxy($operator, $trustedHosts);
