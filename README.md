@@ -32,6 +32,7 @@ According to the ToS of the openstreetmap.org tile server, it is strongly recomm
 ## Demo
 Quite unimpressive, because you shouldn't note a difference, but here we go:
 - https://jugendforum-fks.de/veranstaltungen/orte
+- https://jugendbeiratfalkensee.eu/der-kasten/
 - https://critical-mass-falkensee.de/
 
 ## Planned features
