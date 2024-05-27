@@ -17,7 +17,7 @@ According to the ToS of the openstreetmap.org tile server, it is strongly recomm
 
 ### tileProxy Class Options
 - **`$operator` Required according to the ToS of the openstreetmap.org Tileserver:** The email address of the administrator.
-- `$trustedHosts` An array of domains that are trusted as proxy hosts. The host can be optionally limitated with allowed `referers`  or a specific area `maxBounds` (equivalent to Leaflet). Furthermore you can set `minZoom` and `maxZoom`. Default: empty (all hosts allowed, no limitations).
+- `$trustedHosts` An array of domains that are trusted as proxy hosts. The host can be optionally limitated with allowed `referers` (checks if it matches if the client/browser exposes a referer) or a specific area `maxBounds` (equivalent to Leaflet). Furthermore you can set `minZoom` and `maxZoom`. Default: empty (all hosts allowed, no limitations).
 - `$serverTtl` The time to live of the tiles in the file cache of the web server. Default: 86400 * 31 seconds (31 days).
 - `$browserTtl` The time to live of the tiles in the browser cache. Default: 86400 * 7 sec. (7 days).
 - `$tileserver` The url of the tiles in this format: `https://tile.openstreetmap.org/{z}/{x}/{y}.png` (also default).
