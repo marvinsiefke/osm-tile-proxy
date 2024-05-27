@@ -117,15 +117,17 @@ class tileProxy {
 	private $serverTtl;
 	private $browserTtl;
 	private $tileserver;
+	private $tolerance;
 	private $storage;
 	private $rateLimiter;
 
-	public function __construct($operator, $trustedHosts = [], $serverTtl = 86400 * 31, $browserTtl = 86400 * 7, $tileserver = 'https://tile.openstreetmap.org/{z}/{x}/{y}.png', $storage = 'cache/') {
+	public function __construct($operator, $trustedHosts = [], $serverTtl = 86400 * 31, $browserTtl = 86400 * 7, $tileserver = 'https://tile.openstreetmap.org/{z}/{x}/{y}.png', $tolerance = 0.5, $storage = 'cache/') {
 		$this->operator = $operator;
 		$this->trustedHosts = $trustedHosts;
 		$this->serverTtl = $serverTtl;
 		$this->browserTtl = $browserTtl;
 		$this->tileserver = $tileserver;
+		$this->tolerance = $tolerance;
 		$this->storage = $storage;
 
 		$this->rateLimiter = new rateLimiter();
@@ -141,7 +143,7 @@ class tileProxy {
 	}
 
 	private function isInBounds($lat, $lon, $bounds) {
-		return $lat >= $bounds[0][0] && $lat <= $bounds[1][0] && $lon >= $bounds[0][1] && $lon <= $bounds[1][1];
+		return $lat >= ($bounds[0][0] - $this->tolerance) && $lat <= ($bounds[1][0] + $this->tolerance) && $lon >= ($bounds[0][1] - $this->tolerance) && $lon <= ($bounds[1][1] + $this->tolerance);
 	}
 
 	private function downloadTile($z, $x, $y) {
@@ -179,8 +181,6 @@ class tileProxy {
 		$y = filter_input(INPUT_GET, 'y', FILTER_VALIDATE_INT, ['options' => ['min_range' => 0]]);
 		if ($z === false || $x === false || $y === false) {
 			$this->rateLimiter->hardBan(); 
-			header('HTTP/1.1 400 Bad Request');
-			die('Invalid parameters');
 		}
 
 		$host = $_SERVER['HTTP_HOST'];
