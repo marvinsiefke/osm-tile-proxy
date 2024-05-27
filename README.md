@@ -29,5 +29,10 @@ According to the ToS of the openstreetmap.org tile server, it is strongly recomm
 - `$maxHits` The allowed number of provided tiles per interval. Default: 500 hits.
 - `$maxSoftBans` The allowed number of soft bans. Default: 20 soft bans.
 
+## Demo
+Quite unimpressive, because you shouldn't note a difference, but here we go:
+- https://jugendforum-fks.de/veranstaltungen/orte
+- https://critical-mass-falkensee.de/
+
 ## Planned features
 - Vector tile support when the tileservers are ready :) According to the official osm blog it's already the year of the OpenStreetMap vector maps, so let´s see...
