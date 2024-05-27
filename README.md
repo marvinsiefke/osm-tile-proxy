@@ -7,7 +7,7 @@ This script runs even on shared hosting environments. It does not have any speci
 ## Features
 - Privacy friendly handling (allows a GDPR-compliant usage of OpenStreetMap without an own tileserver)
 - Simple file caching
-- IP and session based rate limiting
+- Anonymized IP and session based rate limiting
 - Access control with maxBounds, maxZoom and minZoom (equivalent to Leaflet)
 - Error logging (if PHP Error logs are enabled)
 
