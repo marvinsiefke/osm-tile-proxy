@@ -24,7 +24,7 @@ According to the ToS of the openstreetmap.org tile server, it is strongly recomm
 - `$browserTtl` The time to live of the tiles in the browser cache. Default: 86400 * 7 sec. (7 days).
 - `$tileserver` The url of the tiles in this format: `https://tile.openstreetmap.org/{z}/{x}/{y}.png` (also default).
 - `$tolerance` expands the maximum bounds for tile requests by a small degree to account for rounding errors and ensure all necessary tiles are fetched.
-- `$storage` The directory of the file cache. Default: `cache/`
+- `$storage` The directory of the file cache. Default: `tmp/`
 
 ### rateLimiter Class Options
 - `$durationInterval` The interval during which the hits are counted. Default: 60 seconds.
