@@ -1,55 +1,18 @@
 <?php
 
 // Proxy settings
-$operator = 'admin@pepper.green';
+$operator = 'admin@domain.com';
 $trustedHosts = [
-	'osm.pepper.cloud' => [
+	'proxy.domain.de' => [
 		'referers' => [
-			'pepper.cloud', 'kdm.pepper.cloud'
+			'domain.de' // allowed referers
 		],
-	],
-	'karten.pfd-falkensee.de' => [
-		'referers' => [
-			'pfd-falkensee.de'
-		],
-		'maxBounds' => [
-			[52.450, 12.930],
-			[52.700, 13.250]
+		'maxBounds' => [ 
+			[47.25, 5.875], // south west
+			[53.05, 13.85] // north east
 		],
 		'maxZoom' => 18,
-		'minZoom' => 12
+		'minZoom' => 11
 	],
-	'karten.jugendforum-fks.de' => [
-		'referers' => [
-			'jugendforum-fks.de'
-		],
-		'maxBounds' => [
-			[52.450, 12.930],
-			[52.700, 13.250]
-		],
-		'maxZoom' => 18,
-		'minZoom' => 12
-	],
-	'karten.jugendbeiratfalkensee.eu' => [
-		'referers' => [
-			'jugendbeiratfalkensee.eu'
-		],
-		'maxBounds' => [
-			[52.450, 12.930],
-			[52.700, 13.250]
-		],
-		'maxZoom' => 18,
-		'minZoom' => 12
-	],
-	'osm.critical-mass-falkensee.de' => [
-		'referers' => [
-			'critical-mass-falkensee.de'
-		],
-		'maxBounds' => [
-			[52.450, 12.930],
-			[52.700, 13.250]
-		],
-		'maxZoom' => 18,
-		'minZoom' => 12
-	]
+	'proxy.domain.com' => [], // without limitations
 ];
