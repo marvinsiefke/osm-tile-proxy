@@ -75,31 +75,35 @@ class tileProxy {
 	}
 
 	public function processQueue() {
-		if (!file_exists($this->queuePath)) {
-			return;
-		}
-
-		$queue = file($this->queuePath, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
-		if (!$queue) {
-			return;
-		}
-
-		$batchSize = 25;
-		$batch = array_slice($queue, 0, $batchSize);
-		$remaining = array_slice($queue, $batchSize);
-
-		foreach ($batch as $line) {
-			list($z, $x, $y) = explode(',', $line);
-			try {
-				echo "Updating $z/$x/$y ...\n";
-				$this->downloadTile($z, $x, $y);
-			} catch (Exception $error) {
-				echo "Error on updating $z/$x/$y: ",$error->getMessage(),"\n";
-				error_log('Failed to update tile '.$z.'/'.$x.'/'.$y.': '.$error->getMessage(), 0);
+		if($this->cron === true) {
+			if (!file_exists($this->queuePath)) {
+				return;
 			}
-		}
 
-		file_put_contents($this->queuePath, implode("\n", $remaining) . (empty($remaining) ? '' : "\n"));
+			$queue = file($this->queuePath, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
+			if (!$queue) {
+				return;
+			}
+
+			$batchSize = 25;
+			$batch = array_slice($queue, 0, $batchSize);
+			$remaining = array_slice($queue, $batchSize);
+
+			foreach ($batch as $line) {
+				list($z, $x, $y) = explode(',', $line);
+				try {
+					echo "Updating $z/$x/$y ...\n";
+					$this->downloadTile($z, $x, $y);
+				} catch (Exception $error) {
+					echo "Error on updating $z/$x/$y: ",$error->getMessage(),"\n";
+					error_log('Failed to update tile '.$z.'/'.$x.'/'.$y.': '.$error->getMessage(), 0);
+				}
+			}
+
+			file_put_contents($this->queuePath, implode("\n", $remaining) . (empty($remaining) ? '' : "\n"));
+		} else {
+			die('Cron is not allowed.')
+		}
 	}
 
 	public function processRequest() {
