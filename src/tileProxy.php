@@ -102,7 +102,7 @@ class tileProxy {
 
 			file_put_contents($this->queuePath, implode("\n", $remaining) . (empty($remaining) ? '' : "\n"));
 		} else {
-			die('Cron is not allowed.')
+			die('Cron is not allowed.');
 		}
 	}
 
