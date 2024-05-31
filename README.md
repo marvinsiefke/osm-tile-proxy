@@ -25,7 +25,7 @@ According to the ToS of the openstreetmap.org tile server, it is strongly recomm
 - `$config['tileservers']` The tileservers with url and ttl. 
 - `$config['tolerance']` expands the maximum bounds for tile requests by a small degree to account for rounding errors and ensure all necessary tiles are fetched.
 - `$config['storage']` The directory of the file cache. Default: `tmp/`
-- `$config['ratelimits']` The options for the rate limiter: `durationInterval` The interval during which the hits are counted (Default: 60 seconds). `$durationHardBan` The duration for any hard bans, e.g., in case of too many soft bans or invalid arguments (Default: 21600 seconds). `$maxHits` The allowed number of provided tiles per interval. (Default: 1500 hits). `$maxSoftBans` The allowed number of soft bans (Default: 50 soft bans).
+- `$config['ratelimits']` The options for the rate limiter: `durationInterval` The interval during which the hits are counted (Default: 60 seconds). `durationHardBan` The duration for any hard bans, e.g., in case of too many soft bans or invalid arguments (Default: 21600 seconds). `maxHits` The allowed number of provided tiles per interval. (Default: 1500 hits). `maxSoftBans` The allowed number of soft bans (Default: 50 soft bans).
 
 Please have a look at the config.php. This documentation is miserable, I will explain some things better soon.
 
