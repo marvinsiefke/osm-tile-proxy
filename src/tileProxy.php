@@ -4,29 +4,37 @@ class tileProxy {
 	private $operator;
 	private $trustedHosts;
 	private $cron;
-	private $serverTtl;
 	private $browserTtl;
-	private $tileserver;
+	private $tileservers;
 	private $tolerance;
 	private $storage;
 	private $rateLimiter;
 
-	public function __construct($operator, $trustedHosts = [], $cron = true, $serverTtl = 86400 * 31, $browserTtl = 86400 * 7, $tileserver = 'https://tile.openstreetmap.org/{z}/{x}/{y}.png', $tolerance = 0.5, $storage = 'tmp/') {
+
+	// Constructor
+	public function __construct($operator, $trustedHosts = [], $cron = true, $browserTtl = 86400 * 7, $tileservers = [], $tolerance = 0.5, $storage = 'tmp/') {
 		$this->operator = $operator;
 		$this->trustedHosts = $trustedHosts;
 		$this->cron = $cron;
-		$this->serverTtl = $serverTtl;
 		$this->browserTtl = $browserTtl;
-		$this->tileserver = $tileserver;
 		$this->tolerance = $tolerance;
 		$this->storage = $storage;
 		$this->queuePath = $this->storage . 'queue.txt';
+		$this->host = $_SERVER['HTTP_HOST'];
+
+		if(empty($tileservers)) {
+			$this->tileservers = ['openstreetmap' => ['urls' => 'https://tile.openstreetmap.org/{z}/{x}/{y}.png', 'ttl' => 86400 * 31, 'batch' => 25]];
+		} else {
+			$this->tileservers = $tileservers;
+		}
 
 		if (class_exists('rateLimiter')) {
 			$this->rateLimiter = new rateLimiter();
 		}
 	}
 
+
+	// Converts tile parameters to latitude and longitude
 	private function tileToLatLon($z, $x, $y) {
 		$n = pow(2, $z);
 		$lonDeg = $x / $n * 360 - 180;
@@ -35,14 +43,20 @@ class tileProxy {
 		return [$latDeg, $lonDeg];
 	}
 
+
+	// Checks if the given latitudes and longitudes are in bounds (respecting the tolerance)
 	private function isInBounds($lat, $lon, $bounds) {
 		return $lat >= ($bounds[0][0] - $this->tolerance) && $lat <= ($bounds[1][0] + $this->tolerance) && $lon >= ($bounds[0][1] - $this->tolerance) && $lon <= ($bounds[1][1] + $this->tolerance);
 	}
 
-	private function downloadTile($z, $x, $y) {
-		$source = str_replace(['{x}', '{y}', '{z}'], [$x, $y, $z], $this->tileserver);
 
-		$filePath = $this->storage . $z . '/' . $x . '/' . $y . '.png';
+	// Downloads tile
+	private function downloadTile($z, $x, $y, $tileserver) {
+		$tileservers = $this->tileservers[$tileserver]['urls'];
+		$url = is_array($tileservers) ? $tileservers[array_rand($tileservers)] : $tileservers;
+		$source = str_replace(['{x}', '{y}', '{z}'], [$x, $y, $z], $url);
+		$filePath = $this->storage . $tileserver . '/' . $z . '/' . $x . '/' . $y . '.png';
+
 		if (!is_dir(dirname($filePath))) {
 			mkdir(dirname($filePath), 0750, true);
 		}
@@ -50,132 +64,194 @@ class tileProxy {
 		$fh = fopen($filePath, 'w');
 		$ch = curl_init();
 		curl_setopt($ch, CURLOPT_URL, $source);
+		curl_setopt($ch, CURLOPT_IPRESOLVE, CURL_IPRESOLVE_V4); // improves really bad performance!
 		curl_setopt($ch, CURLOPT_FILE, $fh);
-		curl_setopt($ch, CURLOPT_TIMEOUT, 30);
+		curl_setopt($ch, CURLOPT_TIMEOUT, 25); 
+		curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 5);
 		curl_setopt($ch, CURLOPT_USERAGENT, 'Tile Proxy, Operator: ' . $this->operator);
 		curl_setopt($ch, CURLOPT_FAILONERROR, true);
+		curl_setopt($ch, CURLOPT_TCP_KEEPIDLE, 120);
+		curl_setopt($ch, CURLOPT_TCP_KEEPINTVL, 60);
+		curl_setopt($ch, CURLOPT_FRESH_CONNECT, false); 
+		curl_setopt($ch, CURLOPT_FORBID_REUSE, false); 
+		curl_setopt($ch, CURLOPT_ENCODING, 'gzip,deflate'); 
+		curl_setopt($ch, CURLOPT_DNS_CACHE_TIMEOUT, 86400); 
+		curl_setopt($ch, CURLOPT_HTTPHEADER, ['Connection: keep-alive']);
 
-		if (!curl_exec($ch)) {
-			unlink($filePath);
-			error_log('Error getting tile. cURL Error ('.curl_errno($ch).'): '.curl_error($ch), 0);
-			throw new Exception('Error getting tile');
+		// Implement retries for temporary errors
+		$maxRetries = 2;
+		$retryCount = 0;
+		$success = false;
+
+		while ($retryCount < $maxRetries && !$success) {
+			$success = curl_exec($ch);
+			if (!$success) {
+				$error = curl_errno($ch);
+				if (in_array($error, [CURLE_OPERATION_TIMEOUTED, CURLE_COULDNT_RESOLVE_HOST, CURLE_COULDNT_CONNECT])) {
+					$retryCount++;
+					sleep(1); // Wait a bit before retrying
+				} else {
+					break; // Non-recoverable error
+				}
+			}
 		}
 
 		curl_close($ch);
 		fclose($fh);
+
+		if (!$success) {
+			unlink($filePath); // Delete if download failed
+			error_log('Error getting tile. cURL Error (' . $error . '): ' . curl_strerror($error), 0);
+			throw new Exception('Error getting tile');
+		}
 	}
 
-	private function queueTile($z, $x, $y) {
+
+	// Returns the active referer if given
+	private function getReferer() {
+		if (!empty($_SERVER['HTTP_REFERER'])) {
+			return parse_url($_SERVER['HTTP_REFERER'], PHP_URL_HOST);
+		}
+
+		return false;
+	}
+
+
+	// Returns the intended tileserver
+	private function intendedTileserver() {
+		$host = $this->host;
+		$fallback = array_key_first($this->tileservers);
+		$intendedTileserver = $fallback;
+
+		if (array_key_exists('tileserver', $this->trustedHosts[$host]) && array_key_exists($this->trustedHosts[$host]['tileserver'], $this->tileservers)) {
+			$intendedTileserver = $this->trustedHosts[$host]['tileserver'];
+		}
+
+		return $intendedTileserver;
+	}
+
+
+	// Adds tile to queue
+	private function queueTile($z, $x, $y, $tileserver) {
 		if (!is_dir(dirname($this->queuePath))) {
 			mkdir(dirname($this->queuePath), 0750, true);
 		}
 
-		$entry = "$z,$x,$y\n";
+		$entry = "$z,$x,$y,$tileserver\n";
 		file_put_contents($this->queuePath, $entry, FILE_APPEND | LOCK_EX);
 	}
 
+
+	// Processes queue for the cronjob
 	public function processQueue() {
-		if($this->cron === true) {
-			if (!file_exists($this->queuePath)) {
-				return;
-			}
-
-			$queue = file($this->queuePath, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
-			if (!$queue) {
-				return;
-			}
-
-			$batchSize = 25;
-			$batch = array_slice($queue, 0, $batchSize);
-			$remaining = array_slice($queue, $batchSize);
-
-			foreach ($batch as $line) {
-				list($z, $x, $y) = explode(',', $line);
-				try {
-					echo "Updating $z/$x/$y ...\n";
-					$this->downloadTile($z, $x, $y);
-				} catch (Exception $error) {
-					echo "Error on updating $z/$x/$y: ",$error->getMessage(),"\n";
-					error_log('Failed to update tile '.$z.'/'.$x.'/'.$y.': '.$error->getMessage(), 0);
-				}
-			}
-
-			file_put_contents($this->queuePath, implode("\n", $remaining) . (empty($remaining) ? '' : "\n"));
-		} else {
-			die('Cron is not allowed.');
+		if (!file_exists($this->queuePath)) {
+			return;
 		}
+
+		$queue = file($this->queuePath, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
+		if (!$queue) {
+			return;
+		}
+
+		$batchSize = $this->tileservers[$tileserver]['batch'] ?? 25;
+		$batch = array_slice($queue, 0, $batchSize);
+		$remaining = array_slice($queue, $batchSize);
+
+		foreach ($batch as $line) {
+			list($z, $x, $y, $tileserver) = explode(',', $line);
+			try {
+				echo "Updating $z/$x/$y from $tileserver ...\n";
+				$this->downloadTile($z, $x, $y, $tileserver);
+			} catch (Exception $error) {
+				echo "Error on updating $z/$x/$y from $tileserver: ",$error->getMessage(),"\n";
+				error_log('Failed to update tile '.$z.'/'.$x.'/'.$y.' from '.$tileserver.': '.$error->getMessage(), 0);
+			}
+		}
+
+		file_put_contents($this->queuePath, implode("\n", $remaining) . (empty($remaining) ? '' : "\n"));
 	}
 
+
+	// Validates and processes request
 	public function processRequest() {
 		header('X-Content-Type-Options: nosniff');
 		header('X-XSS-Protection: 1; mode=block');
 
+		// Validates parameters to patterns
 		$z = filter_input(INPUT_GET, 'z', FILTER_VALIDATE_INT, ['options' => ['min_range' => 0, 'max_range' => 20]]);
 		$x = filter_input(INPUT_GET, 'x', FILTER_VALIDATE_INT, ['options' => ['min_range' => 0]]);
 		$y = filter_input(INPUT_GET, 'y', FILTER_VALIDATE_INT, ['options' => ['min_range' => 0]]);
 		if ($z === false || $x === false || $y === false) {
-			$this->rateLimiter->hardBan(); 
+			if($this->rateLimiter) {
+				$this->rateLimiter->hardBan();
+			}
+			header('HTTP/1.1 400 Bad Request');
+			die('Invalid parameters.');
 		}
 
-		$host = $_SERVER['HTTP_HOST'];
-		if (!empty($this->trustedHosts) && !empty($host)) {
+		$host = $this->host;
+		if (!empty($this->trustedHosts)) {
 			if (!array_key_exists($host, $this->trustedHosts)) {
-				$this->rateLimiter->hardBan();
+				$this->rateLimiter ? $this->rateLimiter->hardBan() : null;
+				header('HTTP/1.1 400 Bad Request');
+				die('Invalid parameters.');
 			} else {
-				$referer = $_SERVER['HTTP_REFERER'] ?? '';
-				if (!empty($referer) && array_key_exists('referers', $this->trustedHosts[$host])) {
-					if (!in_array(parse_url($referer, PHP_URL_HOST), $this->trustedHosts[$host]['referers'])) {
-						$this->rateLimiter->softBan(); 
+				// Checks if the referer is empty or otherwise allowed
+				if($referer = $this->getReferer() && array_key_exists('referers', $this->trustedHosts[$host])) {
+					$allowedReferers = $this->trustedHosts[$host]['referers'];
+					if((is_array($allowedReferers) && !in_array($referer, $allowedReferers)) || (is_string($allowedReferers) && $allowedReferers != $referer)) {
+						$this->rateLimiter ? $this->rateLimiter->softBan() : null;
+						header('HTTP/1.1 400 Bad Request');
+						die('Invalid parameters.');
 					}
 				}
 
-				if (array_key_exists('maxZoom', $this->trustedHosts[$host])) {
-					if($z > $this->trustedHosts[$host]['maxZoom']) {
-						$this->rateLimiter->softBan();
-					}
+				// Checks if the zoom level is allowed 
+				if ((array_key_exists('maxZoom', $this->trustedHosts[$host]) && $z > $this->trustedHosts[$host]['maxZoom']) || (array_key_exists('minZoom', $this->trustedHosts[$host]) && $z < $this->trustedHosts[$host]['minZoom'])) {
+					$this->rateLimiter ? $this->rateLimiter->softBan() : null;
+					header('HTTP/1.1 400 Bad Request');
+					die('Invalid parameters.');
 				}
 
-				if (array_key_exists('minZoom', $this->trustedHosts[$host])) {
-					if($z < $this->trustedHosts[$host]['minZoom']) {
-						$this->rateLimiter->softBan();
-					}
-				}
-
+				// Checks if the tile is in specified bounds
 				if (array_key_exists('maxBounds', $this->trustedHosts[$host])) {
 					$latLon = $this->tileToLatLon($z, $x, $y);
 					$bounds = $this->trustedHosts[$host]['maxBounds'];
 					if (!$this->isInBounds($latLon[0], $latLon[1], $bounds)) {
-						$this->rateLimiter->softBan();
+						$this->rateLimiter ? $this->rateLimiter->softBan() : null;
+						header('HTTP/1.1 400 Bad Request');
+						die('Invalid parameters.');
 					}
 				}
 			}
 		}
 
-		$tileDirectory = $this->storage . $z . '/' . $x;
-		if (!is_dir($tileDirectory)) {
-			mkdir($tileDirectory, 0750, true);
+		// Builds tile path 
+		$tileserver = $this->intendedTileserver();
+		$tilePath = $this->storage . $tileserver . '/' . $z . '/' . $x . '/' . $y . '.png';
+		if (!is_dir(dirname($tilePath))) {
+			mkdir(dirname($tilePath), 0750, true);
 		}
 
-		$tilePath = $tileDirectory . '/' . $y . '.png';
+		// Checks if tile is in stored in cache or requests a download
 		if (file_exists($tilePath)) {
 			$age = filemtime($tilePath);
 			$modified = gmdate('D, d M Y H:i:s', $age) .' GMT';
-			if ($age + $this->serverTtl <= time()) {
+			if ($age + $this->tileservers[$tileserver]['ttl'] <= time()) {
 				if($this->cron === true) {
-					$this->queueTile($z, $x, $y);
+					$this->queueTile($z, $x, $y, $tileserver);
 				} else {
-					$this->downloadTile($z, $x, $y);
+					$this->downloadTile($z, $x, $y, $tileserver);
 				}
 			}
 		} else {
-			$this->downloadTile($z, $x, $y);
+			$this->downloadTile($z, $x, $y, $tileserver);
 			$modified = gmdate('D, d M Y H:i:s', time()) .' GMT';
 		}
 
+		// Output
 		if (file_exists($tilePath)) {
-			$expires = gmdate('D, d M Y H:i:s', time() + $this->browserTtl) .' GMT';
 			header('HTTP/1.1 200 OK');
-			header('Expires: ' . $expires);
 			header('Last-Modified: ' . $modified);
 			header('Content-Type: image/png');
 			header('Cache-Control: public, max-age=' . $this->browserTtl);
