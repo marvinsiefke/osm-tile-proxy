@@ -2,11 +2,21 @@
 
 // Proxy settings
 $config['operator'] = 'admin@domain.com';
-$config['cron'] = true;
-$config['forceCli'] = true;
 $config['browserTtl'] = 86400 * 7;
 $config['tolerance'] = 0.5;
 $config['storage'] = 'tmp/';
+$config['cron'] = [
+	'enabled' => true,
+	'forceCli' => true,
+	'batchSize' => 25,
+];
+$config['ratelimits'] = [
+	'enabled' => true,
+	'durationInterval' => 60,
+	'durationHardBan' => 21600,
+	'maxHits' => 1500,
+	'maxSoftBans' => 50
+];
 $config['tileservers'] = [
 	'openstreetmap' => [
 		'urls' => 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
