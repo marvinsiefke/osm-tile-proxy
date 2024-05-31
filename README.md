@@ -37,6 +37,7 @@ Quite unimpressive, because you shouldn't note a difference, but here we go:
 - https://jugendforum-fks.de/veranstaltungen/orte
 - https://jugendbeiratfalkensee.eu/der-kasten/
 - https://critical-mass-falkensee.de/
+- https://galafa.de/kontakt/
 
 ## Planned features
 - Vector tile support when the tileservers are ready :) According to the official osm blog it's already the year of the OpenStreetMap vector maps, so let´s see...
