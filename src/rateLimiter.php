@@ -6,20 +6,26 @@ class rateLimiter {
 	private $maxHits;
 	private $maxSoftBans;
 
+
+	// Constructor
 	public function __construct($durationInterval = 60, $durationHardBan = 21600, $maxHits = 1500, $maxSoftBans = 50) {
 		$this->durationInterval = $durationInterval;
 		$this->durationHardBan = $durationHardBan;
 		$this->maxHits = $maxHits;
 		$this->maxSoftBans = $maxSoftBans;
 
+		// Set up php configuration
 		ini_set('session.auto_start', 0);
 		ini_set('session.use_strict_mode', 0);
 
+		// Initializes functions
 		$this->startSession();
 		$this->initializeSession();
 		$this->checkRateLimit();
 	}
 
+
+	// Returns client ip (probably)
 	private function getIp() {
 		$ipKeys = ['HTTP_CF_CONNECTING_IP', 'HTTP_CLIENT_IP', 'HTTP_X_FORWARDED_FOR', 'REMOTE_ADDR'];
 
@@ -42,6 +48,8 @@ class rateLimiter {
 		return false;
 	}
 
+
+	// Starts session
 	private function startSession() {
 		$ip = $this->getIp();
 		if ($ip !== false) {
@@ -52,6 +60,8 @@ class rateLimiter {
 		session_start();
 	}
 
+
+	// Defines session variables if they are not given
 	private function initializeSession() {
 		$defaults = ['timeStarted' => time(), 'timeBannedUntil' => 0, 'countHits' => 0, 'countBans' => 0];
 
@@ -60,6 +70,8 @@ class rateLimiter {
 		}
 	}
 
+
+	// Checks rate limits
 	private function checkRateLimit() {
 		if ($_SESSION['timeBannedUntil'] > time()) {
 			header('HTTP/1.1 400 Bad Request');
@@ -80,6 +92,8 @@ class rateLimiter {
 		}
 	}
 
+
+	// Executes soft ban (block request once)
 	public function softBan() {
 		if ($_SESSION['countBans'] < $this->maxSoftBans) {
 			$_SESSION['countBans']++;
@@ -92,6 +106,8 @@ class rateLimiter {
 		die('Too many requests');
 	}
 
+
+	// Executes hard ban (block ip for $this->durationHardBan seconds)
 	public function hardBan() {
 		$_SESSION['timeBannedUntil'] = time() + $this->durationHardBan;
 		header('HTTP/1.1 400 Bad Request');
