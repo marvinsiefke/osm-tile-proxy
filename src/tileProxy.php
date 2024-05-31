@@ -3,16 +3,16 @@
 class tileProxy {
 	private $operator;
 	private $trustedHosts;
-	private $cron;
 	private $browserTtl;
 	private $tileservers;
 	private $tolerance;
 	private $storage;
 	private $rateLimiter;
+	public $cron;
 
 
 	// Constructor
-	public function __construct($operator, $trustedHosts = [], $cron = true, $browserTtl = 86400 * 7, $tileservers = [], $tolerance = 0.5, $storage = 'tmp/') {
+	public function __construct($operator, $trustedHosts = [], $cron = [], $browserTtl = 86400 * 7, $tileservers = [], $tolerance = 0.5, $storage = 'tmp/', $ratelimits = []) {
 		$this->operator = $operator;
 		$this->trustedHosts = $trustedHosts;
 		$this->cron = $cron;
@@ -20,16 +20,12 @@ class tileProxy {
 		$this->tolerance = $tolerance;
 		$this->storage = $storage;
 		$this->queuePath = $this->storage . 'queue.txt';
-		$this->host = $_SERVER['HTTP_HOST'];
+		$this->tileservers = empty($tileservers) ? ['openstreetmap' => ['urls' => 'https://tile.openstreetmap.org/{z}/{x}/{y}.png', 'ttl' => 86400 * 31]] : $tileservers;
+		$this->cron = empty($cron) ? ['enabled' => true, 'forceCli' => true, 'batchSize' => 25] : $cron;
+		$this->ratelimits = empty($ratelimits) ? ['enabled' => true, 'durationInterval' => 60, 'durationHardBan' => 21600, 'maxHits' => 1500, 'maxSoftBans' => 50] : $ratelimits;
 
-		if(empty($tileservers)) {
-			$this->tileservers = ['openstreetmap' => ['urls' => 'https://tile.openstreetmap.org/{z}/{x}/{y}.png', 'ttl' => 86400 * 31, 'batch' => 25]];
-		} else {
-			$this->tileservers = $tileservers;
-		}
-
-		if (class_exists('rateLimiter')) {
-			$this->rateLimiter = new rateLimiter();
+		if (class_exists('rateLimiter') && array_key_exists('enabled', $this->ratelimits) && $this->ratelimits['enabled'] === true) {
+			$this->rateLimiter = new rateLimiter($this->ratelimits['durationInterval'], $this->ratelimits['durationHardBan'], $this->ratelimits['maxHits'], $this->ratelimits['maxSoftBans']);
 		}
 	}
 
@@ -76,7 +72,6 @@ class tileProxy {
 		curl_setopt($ch, CURLOPT_FORBID_REUSE, false); 
 		curl_setopt($ch, CURLOPT_ENCODING, 'gzip,deflate'); 
 		curl_setopt($ch, CURLOPT_DNS_CACHE_TIMEOUT, 86400); 
-		curl_setopt($ch, CURLOPT_HTTPHEADER, ['Connection: keep-alive']);
 
 		// Implement retries for temporary errors
 		$maxRetries = 2;
@@ -107,7 +102,7 @@ class tileProxy {
 	}
 
 
-	// Returns the active referer if given
+	// Returns the current referer if given
 	private function getReferer() {
 		if (!empty($_SERVER['HTTP_REFERER'])) {
 			return parse_url($_SERVER['HTTP_REFERER'], PHP_URL_HOST);
@@ -117,9 +112,20 @@ class tileProxy {
 	}
 
 
+	// Returns the current host if given
+	private function getHost() {
+		if (!empty($_SERVER['HTTP_HOST'])) {
+			$host = filter_var($_SERVER['HTTP_HOST'], FILTER_SANITIZE_URL);
+			return $host;
+		}
+
+		return false;
+	}
+
+
 	// Returns the intended tileserver
 	private function intendedTileserver() {
-		$host = $this->host;
+		$host = $this->getHost();
 		$fallback = array_key_first($this->tileservers);
 		$intendedTileserver = $fallback;
 
@@ -153,7 +159,7 @@ class tileProxy {
 			return;
 		}
 
-		$batchSize = $this->tileservers[$tileserver]['batch'] ?? 25;
+		$batchSize = array_key_exists('batchSize', $this->cron) ? $this->cron['batchSize'] : 30;
 		$batch = array_slice($queue, 0, $batchSize);
 		$remaining = array_slice($queue, $batchSize);
 
@@ -181,6 +187,7 @@ class tileProxy {
 		$z = filter_input(INPUT_GET, 'z', FILTER_VALIDATE_INT, ['options' => ['min_range' => 0, 'max_range' => 20]]);
 		$x = filter_input(INPUT_GET, 'x', FILTER_VALIDATE_INT, ['options' => ['min_range' => 0]]);
 		$y = filter_input(INPUT_GET, 'y', FILTER_VALIDATE_INT, ['options' => ['min_range' => 0]]);
+
 		if ($z === false || $x === false || $y === false) {
 			if($this->rateLimiter) {
 				$this->rateLimiter->hardBan();
@@ -189,7 +196,14 @@ class tileProxy {
 			die('Invalid parameters.');
 		}
 
-		$host = $this->host;
+		// Checks if the host name is given
+		$host = $this->getHost();
+		if(!$host) {
+			$this->rateLimiter ? $this->rateLimiter->hardBan() : null;
+			header('HTTP/1.1 400 Bad Request');
+			die('Invalid parameters.');
+		} 
+
 		if (!empty($this->trustedHosts)) {
 			if (!array_key_exists($host, $this->trustedHosts)) {
 				$this->rateLimiter ? $this->rateLimiter->hardBan() : null;
