@@ -7,13 +7,19 @@ ini_set('max_execution_time', 600);
 require 'config/config.php';
 require 'src/tileProxy.php';
 
-if ($config['cron'] !== true) {
+$tileProxy = new tileProxy($config['operator'], $config['trustedHosts'], $config['cron'], $config['browserTtl'], $config['tileservers'], $config['tolerance'], $config['storage'], ['enabled' => false]);
+
+// Checks if cron is allowed
+$enabled = array_key_exists('enabled', $tileProxy->cron) ? $tileProxy->cron['enabled'] : true;
+if($enabled !== true) {
 	die('Cron is not allowed.');
 }
 
-if ($config['forceCli'] === true && php_sapi_name() !== 'cli') {
+// Checks if cron is limited to run on cli
+$forceCli = array_key_exists('forceCli', $tileProxy->cron) ? $tileProxy->cron['forceCli'] : true;
+if($forceCli === true && php_sapi_name() !== 'cli') {
 	die('This file can only be run from the command line.');
 }
 
-$tileProxy = new tileProxy($config['operator'], $config['trustedHosts'], $config['cron'], $config['browserTtl'], $config['tileserver'], $config['tolerance'], $config['storage']);
+// Processes queue
 $tileProxy->processQueue();
