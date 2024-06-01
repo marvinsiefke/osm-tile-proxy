@@ -21,22 +21,13 @@ $config['tileservers'] = [
 	'openstreetmap' => [
 		'urls' => 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
 		'ttl' => 86400 * 45,
-		'batch' => 25
 	],
-	'maptiler-osm' => [
-		'urls' => 'https://api.maptiler.com/maps/openstreetmap/256/{z}/{x}/{y}@2x.jpg?key={KEY}',
+	'osm-carto' => [
+		'urls' => 'https://maps.geoapify.com/v1/tile/osm-carto/{z}/{x}/{y}@2x.png?apiKey={KEY}',
 		'ttl' => 86400 * 45,
-		'batch' => 50
-	],
-	'maptiler-streets' => [
-		'urls' => 'https://api.maptiler.com/maps/streets-v2/256/{z}/{x}/{y}@2x.png?key={KEY}',
-		'ttl' => 86400 * 45,
-		'batch' => 50
-	],
-	'maptiler-basic' => [
-		'urls' => 'https://api.maptiler.com/maps/basic-v2/256/{z}/{x}/{y}@2x.png?key={KEY}',
-		'ttl' => 86400 * 45,
-		'batch' => 50
+		'contentType' => 'image/png',
+		'extension' => 'png',
+		'useragent' => 'custom user agent',
 	],
 ];
 $config['trustedHosts'] = [
