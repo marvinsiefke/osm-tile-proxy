@@ -22,7 +22,7 @@ $config['tileservers'] = [
 		'urls' => 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
 		'ttl' => 86400 * 45,
 	],
-	'osm-carto' => [
+	'geoapify' => [
 		'urls' => 'https://maps.geoapify.com/v1/tile/osm-carto/{z}/{x}/{y}@2x.png?apiKey={KEY}',
 		'ttl' => 86400 * 45,
 		'contentType' => 'image/png',
