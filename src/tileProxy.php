@@ -20,7 +20,7 @@ class tileProxy {
 		$this->tolerance = $tolerance;
 		$this->storage = $storage;
 		$this->queuePath = $this->storage . 'queue.txt';
-		$this->tileservers = empty($tileservers) ? ['openstreetmap' => ['urls' => 'https://tile.openstreetmap.org/{z}/{x}/{y}.png']] : $tileservers;
+		$this->tileservers = empty($tileservers) ? ['openstreetmap' => ['urls' => 'https://tile.openstreetmap.org/{z}/{x}/{y}.png', 'queue' => false]] : $tileservers;
 		$this->cron = empty($cron) ? ['enabled' => true, 'forceCli' => true, 'batchSize' => 30] : $cron;
 		$this->ratelimits = empty($ratelimits) ? ['enabled' => true, 'durationInterval' => 60, 'durationHardBan' => 21600, 'maxHits' => 1500, 'maxSoftBans' => 50] : $ratelimits;
 
@@ -76,6 +76,7 @@ class tileProxy {
 		$tileserver['contentType'] = array_key_exists('contentType', $tileserver) ? $tileserver['contentType'] : 'image/png';
 		$tileserver['extension'] = array_key_exists('extension', $tileserver) ? $tileserver['extension'] : 'png';
 		$tileserver['useragent'] = array_key_exists('useragent', $tileserver) ? $tileserver['useragent'] : 'Tile Proxy, Operator: ' . $this->operator;
+		$tileserver['queue'] = array_key_exists('queue', $tileserver) ? $tileserver['queue'] : true;
 
 		return $tileserver;
 	}
@@ -167,7 +168,11 @@ class tileProxy {
 		}
 
 		$entry = "$z,$x,$y,$tileserver\n";
-		file_put_contents($this->queuePath, $entry, FILE_APPEND | LOCK_EX);
+		$existingEntries = file_exists($this->queuePath) ? file($this->queuePath) : [];
+
+		if (!in_array($entry, $existingEntries)) {
+			file_put_contents($this->queuePath, $entry, FILE_APPEND | LOCK_EX);
+		}
 	}
 
 
@@ -295,7 +300,7 @@ class tileProxy {
 			$age = filemtime($tilePath);
 			$modified = gmdate('D, d M Y H:i:s', $age) .' GMT';
 			if ($age + $tileserverData['ttl'] <= time()) {
-				if($this->cron === true) {
+				if($this->cron === true && $tileserverData['queue'] === true) {
 					$this->queueTile($z, $x, $y, $tileserver);
 				} else {
 					$this->downloadTile($z, $x, $y, $tileserver);
